@@ -80,7 +80,7 @@ export default function Library() {
   async function changeStatus(entry, status) {
     // Moving into Completed/Dropped: open the editor so the user can rate right away.
     if (RATEABLE.includes(status) && !RATEABLE.includes(entry.status)) {
-      setEditing({ ...entry, status })
+      setEditing({ entry, initialStatus: status })
       return
     }
     try {
@@ -158,15 +158,16 @@ export default function Library() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {shown.map((entry) => (
-            <LibraryCard key={entry.id} entry={entry} onStatusChange={changeStatus} onEdit={setEditing} />
+            <LibraryCard key={entry.id} entry={entry} onStatusChange={changeStatus} onEdit={(e) => setEditing({ entry: e })} />
           ))}
         </div>
       )}
 
       {editing && (
         <EntryEditor
-          title={editing.game.title}
-          entry={editing}
+          title={editing.entry.game.title}
+          entry={editing.entry}
+          initialStatus={editing.initialStatus}
           onSaved={replace}
           onDeleted={(d) => setEntries((list) => list.filter((e) => e.id !== d.id))}
           onClose={() => setEditing(null)}
