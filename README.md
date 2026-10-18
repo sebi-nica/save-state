@@ -121,7 +121,7 @@ New **Web Service** from the GitHub repo:
 Render's free tier sleeps after about 15 minutes of inactivity, so the first request after that can take up to a minute.
 
 ### 3. Vercel (frontend)
-1. In `frontend/vercel.json`, replace `REPLACE-WITH-RENDER-SERVICE` with your Render service name and commit the change.
+1. `frontend/vercel.json` rewrites `/api/*` to `https://save-state-api.onrender.com`. Update it if the Render service is renamed.
 2. Import the repo in Vercel with root directory `frontend` and framework preset **Vite**. No environment variables are needed.
 3. After the first deploy, put the Vercel URL into Render's `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.
 
