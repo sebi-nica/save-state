@@ -16,3 +16,20 @@ def import_game(igdb_id):
         return game
     data = igdb.get_game(igdb_id)
     return upsert_game(data) if data else None
+
+
+UPSERT_FIELDS = ["title", "slug", "cover_url", "summary", "release_date", "genres", "platforms", "updated_at"]
+
+
+def upsert_games(items):
+    """Bulk version of upsert_game: one INSERT ... ON CONFLICT plus one SELECT, in input order."""
+    if not items:
+        return []
+    Game.objects.bulk_create(
+        [Game(**data) for data in items],
+        update_conflicts=True,
+        unique_fields=["igdb_id"],
+        update_fields=UPSERT_FIELDS,
+    )
+    by_igdb_id = {g.igdb_id: g for g in Game.objects.filter(igdb_id__in=[d["igdb_id"] for d in items])}
+    return [by_igdb_id[d["igdb_id"]] for d in items]

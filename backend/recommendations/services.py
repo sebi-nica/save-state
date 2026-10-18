@@ -13,7 +13,7 @@ from django.core.cache import cache
 
 from games import igdb
 from games.models import Game
-from games.services import upsert_game
+from games.services import upsert_games
 from library.models import RATEABLE_STATUSES, UserGameList
 
 logger = logging.getLogger(__name__)
@@ -83,8 +83,8 @@ def recommend(user, limit=20):
             if discovered is None:
                 discovered = igdb.discover_games(list(genres), list(platforms), limit=limit * 2)
                 cache.set(cache_key, discovered, DISCOVER_CACHE_SECONDS)
-            for data in discovered:
-                consider(upsert_game(data))
+            for game in upsert_games(discovered):
+                consider(game)
             source = "local+igdb"
         except igdb.IGDBError as exc:
             logger.warning("IGDB fallback for recommendations failed: %s", exc)

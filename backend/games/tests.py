@@ -22,6 +22,7 @@ def test_query_escapes_search_text(mock_igdb):
     igdb.search_games('say "hi"')
     body = mock_igdb.calls[-1].request.body.decode()
     assert 'search "say \\"hi\\""' in body
+    assert igdb.GAME_FILTER in body
 
 
 def test_search_requires_auth(client):
@@ -101,3 +102,14 @@ def test_discover_query_shape(mock_igdb):
     igdb.discover_games([12, 31], [6])
     body = mock_igdb.calls[-1].request.body.decode()
     assert "genres = (12,31)" in body and "platforms = (6)" in body
+
+
+def test_upsert_games_inserts_and_updates_in_order(make_game):
+    from games.services import upsert_games
+
+    existing = make_game(1, "Old title")
+    games = upsert_games([igdb.map_game(igdb_raw(2, "New game")), igdb.map_game(igdb_raw(1, "Fresh title"))])
+    assert [g.igdb_id for g in games] == [2, 1]
+    existing.refresh_from_db()
+    assert existing.title == "Fresh title"
+    assert Game.objects.count() == 2

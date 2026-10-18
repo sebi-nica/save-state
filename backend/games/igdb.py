@@ -20,6 +20,10 @@ API_URL = "https://api.igdb.com/v4"
 COVER_URL = "https://images.igdb.com/igdb/image/upload/t_cover_big/{image_id}.jpg"
 TOKEN_CACHE_KEY = "igdb:token"
 GAME_FIELDS = "name,slug,summary,first_release_date,cover.image_id,genres.name,platforms.name"
+# Keep real, standalone games: main games, standalone expansions, remakes, remasters,
+# expanded games and ports. Drops DLC, bundles, mods, episodes, updates and editions
+# (GOTY/Deluxe editions are versions of a parent game).
+GAME_FILTER = "game_type = (0,4,8,9,10,11) & version_parent = null"
 MIN_INTERVAL = 0.26  # seconds between requests (just under 4 req/s)
 TIMEOUT = 10
 
@@ -124,7 +128,7 @@ def map_game(raw):
 
 
 def search_games(text, limit=20):
-    body = f"search {_quote(text)}; fields {GAME_FIELDS}; limit {int(limit)};"
+    body = f"search {_quote(text)}; fields {GAME_FIELDS}; where {GAME_FILTER}; limit {int(limit)};"
     return [map_game(raw) for raw in query("games", body)]
 
 
@@ -136,7 +140,7 @@ def get_game(igdb_id):
 
 def discover_games(genre_ids, platform_ids, limit=40):
     """Well-rated games matching any of the genres and any of the platforms."""
-    conditions = ["total_rating_count > 20"]
+    conditions = [GAME_FILTER, "total_rating_count > 100"]
     if genre_ids:
         conditions.append(f"genres = {_id_list(genre_ids)}")
     if platform_ids:
