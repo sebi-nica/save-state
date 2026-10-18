@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from library.models import RATEABLE_STATUSES, UserGameList
@@ -22,6 +23,9 @@ def igdb_unavailable(exc):
 
 class GameSearchView(APIView):
     """Live search against IGDB. Results are annotated with the user's library status."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "search"
 
     def get(self, request):
         text = request.query_params.get("q", "").strip()
@@ -59,6 +63,9 @@ class ImportSerializer(serializers.Serializer):
 
 class GameImportView(APIView):
     """Store a selected IGDB game locally (no-op if it is already stored)."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "search"
 
     def post(self, request):
         serializer = ImportSerializer(data=request.data)

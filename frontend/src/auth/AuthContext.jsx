@@ -1,7 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import api, { refreshSession, setAccessToken, setSessionExpiredHandler } from '../api/client'
+import api, { isTransientError, refreshSession, setAccessToken, setSessionExpiredHandler } from '../api/client'
 
 const AuthContext = createContext(null)
+
+// The first request after Render's free tier sleeps may fail at the gateway; try once more.
+function restoreSession(retries = 1) {
+  return refreshSession().catch((error) => {
+    if (retries > 0 && isTransientError(error)) {
+      return new Promise((resolve) => setTimeout(resolve, 2000)).then(() => restoreSession(retries - 1))
+    }
+    throw error
+  })
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -10,7 +20,7 @@ export function AuthProvider({ children }) {
   // Restore the session from the refresh cookie on page load.
   useEffect(() => {
     setSessionExpiredHandler(() => setUser(null))
-    refreshSession()
+    restoreSession()
       .then((data) => setUser(data.user))
       .catch(() => setUser(null))
       .finally(() => setLoading(false))

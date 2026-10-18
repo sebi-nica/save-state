@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import ServerStatusBanner from './ServerStatusBanner'
 
 function NavItem({ to, children, onClick }) {
   return (
@@ -40,6 +41,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/85 backdrop-blur">
+        <ServerStatusBanner />
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
           <Link to="/" className="flex items-center gap-2 font-bold tracking-tight">
             <img src="/favicon.svg" alt="" className="h-7 w-7" />

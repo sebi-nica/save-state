@@ -122,6 +122,9 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    # Applied per view with ScopedRateThrottle: auth = login/register per IP,
+    # search = IGDB-backed search/import per user, recs = recommendations per user.
+    "DEFAULT_THROTTLE_RATES": {"auth": "10/min", "search": "30/min", "recs": "20/min"},
 }
 
 SIMPLE_JWT = {

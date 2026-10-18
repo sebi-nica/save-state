@@ -8,7 +8,7 @@ import { Alert, Button, Chip, Cover, EmptyState, PageLoader, StatusBadge } from 
 
 export default function GameDetail() {
   const { id } = useParams()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(false)
@@ -19,12 +19,14 @@ export default function GameDetail() {
       .then((res) => setData(res.data))
       .catch((err) => setError(err.response?.status === 404 ? 'Game not found.' : errorMessage(err)))
 
+  // Wait for the session check so the page is fetched once, with the user's own entry.
   useEffect(() => {
+    if (authLoading) return
     setData(null)
     setError('')
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user?.id])
+  }, [id, user?.id, authLoading])
 
   if (error) return <Alert>{error}</Alert>
   if (!data) return <PageLoader />

@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.exceptions import APIException
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
@@ -63,6 +64,8 @@ class PublicAuthView(APIView):
 
 
 class RegisterView(PublicAuthView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -71,6 +74,9 @@ class RegisterView(PublicAuthView):
 
 
 class LoginView(PublicAuthView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
     def post(self, request):
         serializer = TokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -83,7 +89,8 @@ class RefreshView(PublicAuthView):
     def post(self, request):
         token = request.COOKIES.get(settings.REFRESH_COOKIE["key"])
         if not token:
-            return session_expired()
+            # Plain logged-out visitor: not an error, just no session.
+            return Response({"access": None, "user": None})
         serializer = TokenRefreshSerializer(data={"refresh": token})
         try:
             serializer.is_valid(raise_exception=True)

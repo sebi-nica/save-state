@@ -50,6 +50,13 @@ def test_search_is_cached(auth_client, mock_igdb):
     assert sum(1 for c in mock_igdb.calls if c.request.url == GAMES_URL) == 1
 
 
+def test_search_is_rate_limited(auth_client, mock_igdb):
+    mock_igdb.post(GAMES_URL, json=[])
+    for i in range(30):
+        assert auth_client.get(f"/api/games/search/?q=query{i}").status_code == 200
+    assert auth_client.get("/api/games/search/?q=one-more").status_code == 429
+
+
 def test_search_returns_503_when_igdb_down(auth_client, mock_igdb):
     mock_igdb.post(GAMES_URL, status=500)
     assert auth_client.get("/api/games/search/?q=hades").status_code == 503

@@ -63,8 +63,23 @@ def test_refresh_rotates_and_old_token_is_blacklisted(client, user):
     assert reused.status_code == 401
 
 
-def test_refresh_without_cookie(client):
-    assert client.post("/api/auth/refresh/").status_code == 401
+def test_refresh_without_cookie_is_anonymous_not_error(client):
+    resp = client.post("/api/auth/refresh/")
+    assert resp.status_code == 200
+    assert resp.data == {"access": None, "user": None}
+
+
+def test_refresh_with_garbage_cookie(client):
+    client.cookies[COOKIE] = "not-a-token"
+    resp = client.post("/api/auth/refresh/")
+    assert resp.status_code == 401
+    assert resp.cookies[COOKIE].value == ""
+
+
+def test_login_is_rate_limited(client, user):
+    for _ in range(10):
+        assert client.post("/api/auth/login/", {"username": "alice", "password": "nope"}, format="json").status_code == 401
+    assert client.post("/api/auth/login/", {"username": "alice", "password": "nope"}, format="json").status_code == 429
 
 
 def test_logout_clears_cookie_and_blacklists(client, user):
