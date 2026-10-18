@@ -152,5 +152,8 @@ Render's free tier sleeps after about 15 minutes of inactivity, so the first req
 
 Pushes to `main` redeploy both services automatically.
 
+### 4. Keep-alive (cron-job.org)
+Render's free tier puts the backend to sleep after 15 minutes without traffic, and the next request then waits 30–60 seconds for it to start. A free [cron-job.org](https://cron-job.org) job sends `GET https://save-state-api.onrender.com/api/health/` every 10 minutes so the backend stays awake. The health endpoint doesn't query the database, so Neon can still pause when idle. Running one service around the clock uses at most 744 of Render's 750 free hours a month.
+
 ---
 Game data provided by [IGDB.com](https://www.igdb.com).
