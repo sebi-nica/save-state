@@ -68,6 +68,20 @@ cd backend
 
 Tests run on in-memory SQLite and mock every IGDB call, so they need no network access or credentials. To run them against Postgres instead, set `TEST_DATABASE_URL`.
 
+### Frontend tests
+
+```bash
+cd frontend
+npm test            # single run; `npm run test:watch` re-runs on save
+```
+
+Vitest and React Testing Library run in jsdom with a fake HTTP layer. They cover:
+- The API client: token refresh on 401, sharing one refresh between concurrent calls, the cross-tab Web Lock, and cold-start retries with the "waking up" signal.
+- Rating rules in the library editor.
+- The star rating control.
+- Library tabs and status changes.
+- The route guards.
+
 ## API overview
 
 All endpoints are under `/api/`. Authenticated endpoints expect `Authorization: Bearer <access token>`.
