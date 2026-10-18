@@ -104,9 +104,28 @@ export function Chip({ children }) {
   return <span className="rounded-md bg-slate-800 px-2 py-0.5 text-xs text-slate-300">{children}</span>
 }
 
-export function Cover({ src, title, className = '' }) {
+/** Swap the size segment of an IGDB image URL, e.g. .../t_cover_big/x.jpg -> .../t_cover_small/x.jpg */
+export function igdbImage(url, size) {
+  return url && url.includes('images.igdb.com') ? url.replace(/\/t_[a-z0-9_]+\//, `/t_${size}/`) : url
+}
+
+// small: thumbnails (~90px); card: grid cards (~264px); hero: large cover with a retina variant.
+const COVER_SIZES = {
+  small: ['cover_small', 'cover_small_2x'],
+  card: ['cover_big', null],
+  hero: ['cover_big', 'cover_big_2x'],
+}
+
+export function Cover({ src, title, size = 'card', className = '' }) {
+  const [base, retina] = COVER_SIZES[size]
   return src ? (
-    <img src={src} alt={`${title} cover`} loading="lazy" className={`aspect-[3/4] w-full rounded-lg bg-slate-800 object-cover ${className}`} />
+    <img
+      src={igdbImage(src, base)}
+      srcSet={retina ? `${igdbImage(src, base)} 1x, ${igdbImage(src, retina)} 2x` : undefined}
+      alt={`${title} cover`}
+      loading="lazy"
+      className={`aspect-[3/4] w-full rounded-lg bg-slate-800 object-cover ${className}`}
+    />
   ) : (
     <div className={`flex aspect-[3/4] w-full items-center justify-center rounded-lg bg-slate-800 p-2 text-center text-xs text-slate-500 ${className}`}>
       {title}
@@ -144,6 +163,18 @@ export function Modal({ title, onClose, children }) {
       </div>
     </div>
   )
+}
+
+/** IGDB time-to-beat seconds -> "~12h" (null when unknown). */
+export function formatHours(seconds) {
+  if (!seconds) return null
+  const hours = seconds / 3600
+  return hours < 1 ? '<1h' : `~${Math.round(hours)}h`
+}
+
+/** "2017 · ~21h" style subtitle for game cards. */
+export function gameMeta(game) {
+  return [year(game.release_date) ?? 'TBA', formatHours(game.ttb_normally)].filter(Boolean).join(' · ')
 }
 
 export function year(dateString) {

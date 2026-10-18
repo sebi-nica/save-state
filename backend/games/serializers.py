@@ -16,5 +16,8 @@ class GameSerializer(serializers.ModelSerializer):
             "release_date",
             "genres",
             "platforms",
+            "ttb_hastily",
+            "ttb_normally",
+            "ttb_completely",
         ]
         read_only_fields = fields

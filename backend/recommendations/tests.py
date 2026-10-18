@@ -97,3 +97,68 @@ def test_endpoint(auth_client, rpg_fan, make_game, mock_igdb):
 
 def test_endpoint_requires_auth(client):
     assert client.get("/api/recommendations/").status_code == 401
+
+
+# --- Backlog picker ---------------------------------------------------------------------------
+
+import random  # noqa: E402
+
+from recommendations.services import pick_next  # noqa: E402
+
+
+def add_backlog(user, make_game, igdb_id, title, genres=(), platforms=(), hours=None):
+    game = make_game(igdb_id, title, genres=genres, platforms=platforms)
+    if hours is not None:
+        Game.objects.filter(pk=game.pk).update(ttb_normally=hours * 3600)
+    return UserGameList.objects.create(user=user, game=game, status="Backlog")
+
+
+def test_picker_only_draws_from_backlog(rpg_fan, make_game):
+    picks = pick_next(rpg_fan, count=5, rng=random.Random(1))
+    assert [p["entry"].game.title for p in picks["results"]] == ["Backlog RPG"]
+    assert picks["backlog_size"] == 1
+
+
+def test_picker_empty_backlog(user):
+    data = pick_next(user)
+    assert data["results"] == [] and "backlog is empty" in data["message"]
+
+
+def test_picker_respects_max_hours_and_skips_unknown_lengths(user, make_game):
+    add_backlog(user, make_game, 1, "Short", hours=8)
+    add_backlog(user, make_game, 2, "Long", hours=60)
+    add_backlog(user, make_game, 3, "Unknown")
+    data = pick_next(user, count=3, max_hours=10, rng=random.Random(0))
+    assert [p["entry"].game.title for p in data["results"]] == ["Short"]
+    assert "under 5 hours" in pick_next(user, max_hours=5)["message"]
+
+
+def test_picker_favours_games_matching_taste(rpg_fan, make_game):
+    # rpg_fan loves RPGs on PC; give the backlog one more matching and one non-matching game.
+    add_backlog(rpg_fan, make_game, 20, "Another RPG", genres=[RPG], platforms=[PC])
+    add_backlog(rpg_fan, make_game, 21, "Puzzle-free shooter", genres=[SHOOTER], platforms=[PS5])
+    rng = random.Random(42)
+    firsts = [pick_next(rpg_fan, count=1, rng=rng)["results"][0]["entry"].game.title for _ in range(600)]
+    shooter_share = firsts.count("Puzzle-free shooter") / len(firsts)
+    # Weights: each RPG on PC scores 1 + 2 + 1 = 4, the shooter scores 1 -> about 1/9 of draws.
+    assert 0.05 < shooter_share < 0.2
+
+
+def test_picker_returns_distinct_games(user, make_game):
+    for i in range(5):
+        add_backlog(user, make_game, 100 + i, f"G{i}")
+    titles = [p["entry"].game.title for p in pick_next(user, count=5, rng=random.Random(3))["results"]]
+    assert sorted(titles) == [f"G{i}" for i in range(5)]
+
+
+def test_picker_endpoint(auth_client, user, make_game):
+    entry = add_backlog(user, make_game, 1, "Short", genres=[RPG], hours=8)
+    resp = auth_client.get("/api/recommendations/next/?max_hours=10&count=2&seed=7")
+    assert resp.status_code == 200
+    assert resp.data["results"][0]["entry"]["id"] == entry.id
+    assert resp.data["results"][0]["entry"]["game"]["ttb_normally"] == 8 * 3600
+    assert auth_client.get("/api/recommendations/next/?max_hours=abc").status_code == 200
+
+
+def test_picker_endpoint_requires_auth(client):
+    assert client.get("/api/recommendations/next/").status_code == 401

@@ -3,10 +3,22 @@ import { Link } from 'react-router-dom'
 import api, { errorMessage } from '../api/client'
 import EntryEditor from '../components/EntryEditor'
 import StarRating from '../components/StarRating'
-import { Alert, Cover, EmptyState, PageLoader, Select, year } from '../components/ui'
+import { Alert, Cover, EmptyState, PageLoader, Select, gameMeta } from '../components/ui'
 import { RATEABLE, STATUSES } from '../constants'
 
 const TABS = ['All', ...STATUSES]
+
+// Unknown values sort last for "shortest" and "rating".
+const last = (value) => value ?? Number.POSITIVE_INFINITY
+const SORTS = {
+  updated: { label: 'Recently updated', compare: null }, // API order
+  title: { label: 'Title', compare: (a, b) => a.game.title.localeCompare(b.game.title) },
+  shortest: { label: 'Shortest first', compare: (a, b) => last(a.game.ttb_normally) - last(b.game.ttb_normally) },
+  rating: {
+    label: 'Highest rated',
+    compare: (a, b) => last(a.review_visible ? -a.rating : null) - last(b.review_visible ? -b.rating : null),
+  },
+}
 
 function LibraryCard({ entry, onStatusChange, onEdit }) {
   const { game } = entry
@@ -16,7 +28,7 @@ function LibraryCard({ entry, onStatusChange, onEdit }) {
         <Cover src={game.cover_url} title={game.title} className="transition group-hover:opacity-90" />
         <h3 className="mt-3 line-clamp-2 font-medium leading-snug group-hover:text-violet-300">{game.title}</h3>
       </Link>
-      <p className="mt-0.5 text-xs text-slate-500">{year(game.release_date) ?? 'TBA'}</p>
+      <p className="mt-0.5 text-xs text-slate-500">{gameMeta(game)}</p>
       <div className="mt-2 min-h-5">
         {entry.review_visible && <StarRating value={entry.rating} size="sm" />}
       </div>
@@ -46,6 +58,7 @@ function LibraryCard({ entry, onStatusChange, onEdit }) {
 export default function Library() {
   const [entries, setEntries] = useState(null)
   const [tab, setTab] = useState('All')
+  const [sort, setSort] = useState('updated')
   const [editing, setEditing] = useState(null)
   const [error, setError] = useState('')
 
@@ -79,6 +92,7 @@ export default function Library() {
 
   if (!entries && !error) return <PageLoader />
   const shown = (entries ?? []).filter((e) => tab === 'All' || e.status === tab)
+  if (SORTS[sort].compare) shown.sort(SORTS[sort].compare)
 
   return (
     <div>
@@ -108,6 +122,28 @@ export default function Library() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {tab === 'Backlog' && counts.Backlog > 1 ? (
+          <Link to="/recommendations" className="text-sm text-violet-400 hover:underline">
+            Can't decide? Let SaveState pick your next game →
+          </Link>
+        ) : (
+          <span />
+        )}
+        <label className="flex items-center gap-2 text-sm text-slate-400">
+          Sort
+          <span className="w-44">
+            <Select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort library">
+              {Object.entries(SORTS).map(([key, { label }]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </span>
+        </label>
       </div>
 
       <Alert>{error}</Alert>

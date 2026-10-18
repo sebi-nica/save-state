@@ -35,6 +35,7 @@ py -3.13 -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt     # macOS/Linux: .venv/bin/pip
 cp .env.example .env                                   # then fill in the values
 .venv/Scripts/python manage.py migrate
+.venv/Scripts/python manage.py createcachetable
 .venv/Scripts/python manage.py createsuperuser
 .venv/Scripts/python manage.py runserver 8000
 ```
@@ -97,9 +98,19 @@ All endpoints are under `/api/`. Authenticated endpoints expect `Authorization: 
 | `GET games/{id}/` | Game details, public reviews, average rating, and the caller's own entry (public endpoint) |
 | `GET/POST library/`, `PATCH/DELETE library/{id}/` | The user's tracked games; `?status=` filters. POST accepts `game_id` or `igdb_id`. |
 | `GET recommendations/` | Personalized suggestions, plus the genres and platforms they're based on |
+| `GET recommendations/next/?max_hours=&count=` | "What should I play next?": weighted random picks from the user's Backlog |
 | `admin/users/`, `admin/games/`, `admin/reviews/` | Staff only: list (`?search=`, `?page=`), update, delete; `POST admin/games/{id}/resync/` |
 
 The Django admin panel is also available as a fallback at `/django-admin/` on the backend.
+
+### Time to beat
+Each game stores IGDB's community time-to-beat estimates (rushed, main story, completionist), fetched when the game is imported or discovered. `manage.py backfill_time_to_beat` fills in missing estimates and runs on every deploy. The Library can sort by shortest main-story time.
+
+### Backlog picker
+`recommendations/next/` draws up to `count` distinct games from the user's Backlog. Each game's weight is `1 + taste score`, where the taste score is the same genre/platform score the recommender uses. Games the user is likely to enjoy come up more often, but every backlog game keeps a chance. `max_hours` keeps only games whose main-story estimate is known and fits.
+
+### Caching
+The cache is Django's database cache (the `django_cache` table, created by `createcachetable`), so all gunicorn workers share cached IGDB searches, the IGDB token and rate-limit counters. Vercel serves the hashed `/assets/*` files with a one-year immutable `Cache-Control` header.
 
 ### Recommendation algorithm
 
@@ -116,7 +127,7 @@ Create a project in **AWS Europe Central 1 (Frankfurt)**. Use the `production` b
 New **Web Service** from the GitHub repo:
 - Root directory: `backend`
 - Runtime: Python
-- Build command: `bash build.sh`. It installs packages, runs `collectstatic` and `migrate`, and creates the admin account through `ensure_superuser`.
+- Build command: `bash build.sh`. It installs packages, runs `collectstatic`, `migrate` and `createcachetable`, creates the admin account through `ensure_superuser`, and backfills missing time-to-beat estimates.
 - Start command: `gunicorn savestate.wsgi`
 - Health check path: `/api/health/`
 - Environment variables:

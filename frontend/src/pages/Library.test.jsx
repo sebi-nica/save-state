@@ -10,11 +10,13 @@ vi.mock('../api/client', () => ({
   errorMessage: (error) => error.message,
 }))
 
-const game = (id, title) => ({ id, title, cover_url: '', release_date: '2020-01-01', genres: [], platforms: [] })
+const game = (id, title, hours = null) => ({
+  id, title, cover_url: '', release_date: '2020-01-01', genres: [], platforms: [], ttb_normally: hours && hours * 3600,
+})
 const ENTRIES = [
-  { id: 1, status: 'Playing', rating: null, review: null, review_visible: false, game: game(10, 'Celeste') },
-  { id: 2, status: 'Completed', rating: 5, review: 'Great', review_visible: true, game: game(11, 'Hades') },
-  { id: 3, status: 'Completed', rating: 4, review: null, review_visible: true, game: game(12, 'Elden Ring') },
+  { id: 1, status: 'Playing', rating: null, review: null, review_visible: false, game: game(10, 'Celeste', 21) },
+  { id: 2, status: 'Completed', rating: 5, review: 'Great', review_visible: true, game: game(11, 'Hades', 22) },
+  { id: 3, status: 'Completed', rating: 4, review: null, review_visible: true, game: game(12, 'Elden Ring', 60) },
 ]
 
 async function renderLibrary() {
@@ -63,5 +65,17 @@ describe('Library', () => {
     const dialog = screen.getByRole('dialog', { name: 'Edit: Celeste' })
     expect(within(dialog).getByRole('radiogroup', { name: 'Rating' })).toBeInTheDocument()
     expect(api.patch).not.toHaveBeenCalled()
+  })
+
+  it('sorts by shortest time to beat and by rating', async () => {
+    await renderLibrary()
+    const titles = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(screen.getByText('2020 · ~21h')).toBeInTheDocument()
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort library' }), 'shortest')
+    expect(titles()).toEqual(['Celeste', 'Hades', 'Elden Ring'])
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Sort library' }), 'rating')
+    expect(titles()).toEqual(['Hades', 'Elden Ring', 'Celeste'])
   })
 })

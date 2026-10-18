@@ -18,7 +18,10 @@ def import_game(igdb_id):
     return upsert_game(data) if data else None
 
 
-UPSERT_FIELDS = ["title", "slug", "cover_url", "summary", "release_date", "genres", "platforms", "updated_at"]
+UPSERT_FIELDS = [
+    "title", "slug", "cover_url", "summary", "release_date", "genres", "platforms",
+    "ttb_hastily", "ttb_normally", "ttb_completely", "updated_at",
+]
 
 
 def upsert_games(items):

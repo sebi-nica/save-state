@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api, { errorMessage } from '../api/client'
-import { Alert, Button, Chip, Cover, EmptyState, PageLoader, year } from '../components/ui'
+import BacklogPicker from '../components/BacklogPicker'
+import { Alert, Button, Chip, Cover, EmptyState, PageLoader, gameMeta } from '../components/ui'
 
 export default function Recommendations() {
   const [data, setData] = useState(null)
@@ -31,6 +32,7 @@ export default function Recommendations() {
 
   return (
     <div>
+      <BacklogPicker />
       <h1 className="text-2xl font-bold">Recommended for you</h1>
       {data?.based_on?.genres.length > 0 && (
         <p className="mt-1 text-sm text-slate-400">
@@ -58,7 +60,7 @@ export default function Recommendations() {
               <Cover src={item.game.cover_url} title={item.game.title} className="transition group-hover:opacity-90" />
               <h3 className="mt-3 line-clamp-2 font-medium leading-snug group-hover:text-violet-300">{item.game.title}</h3>
             </Link>
-            <p className="mt-0.5 text-xs text-slate-500">{year(item.game.release_date) ?? 'TBA'}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{gameMeta(item.game)}</p>
             <div className="mt-2 flex flex-wrap gap-1">
               {item.matched_genres.map((g) => (
                 <Chip key={g}>{g}</Chip>

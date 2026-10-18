@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import api, { errorMessage } from '../../api/client'
 import { useAuth } from '../../auth/AuthContext'
 import StarRating from '../../components/StarRating'
-import { Alert, Button, Input, PageLoader, StatusBadge } from '../../components/ui'
+import { Alert, Button, Input, PageLoader, StatusBadge, igdbImage } from '../../components/ui'
 
 const TABS = { users: 'Users', games: 'Games', reviews: 'Reviews' }
 
@@ -165,7 +165,7 @@ function GamesTab() {
             <tr key={g.id} className="hover:bg-slate-900/60">
               <td className="px-4 py-3">
                 <Link to={`/games/${g.id}`} className="flex items-center gap-3 hover:text-violet-300">
-                  {g.cover_url ? <img src={g.cover_url} alt="" className="h-12 w-9 rounded object-cover" /> : <div className="h-12 w-9 rounded bg-slate-800" />}
+                  {g.cover_url ? <img src={igdbImage(g.cover_url, 'cover_small')} alt="" className="h-12 w-9 rounded object-cover" /> : <div className="h-12 w-9 rounded bg-slate-800" />}
                   <span className="font-medium">{g.title}</span>
                 </Link>
               </td>

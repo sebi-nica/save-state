@@ -90,7 +90,7 @@ export default function Search() {
         {results.map((r) => (
           <li key={r.igdb_id} className="flex gap-4 rounded-xl bg-slate-900 p-3 ring-1 ring-slate-800">
             <button onClick={() => openGame(r)} className="w-16 shrink-0 sm:w-20" aria-label={`View ${r.title}`}>
-              <Cover src={r.cover_url} title={r.title} />
+              <Cover src={r.cover_url} title={r.title} size="small" />
             </button>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

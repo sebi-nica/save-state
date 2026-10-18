@@ -6,6 +6,7 @@ class Game(models.Model):
     (or the recommender caches a suggestion), so the table grows with relevant data only.
 
     `genres` and `platforms` are JSON lists of {"id": <igdb id>, "name": <str>}.
+    `ttb_*` are IGDB time-to-beat estimates in seconds (rushed / main / completionist).
     """
 
     igdb_id = models.PositiveIntegerField(unique=True)
@@ -16,6 +17,10 @@ class Game(models.Model):
     release_date = models.DateField(null=True, blank=True)
     genres = models.JSONField(default=list, blank=True)
     platforms = models.JSONField(default=list, blank=True)
+    # IGDB community time-to-beat estimates, in seconds (null when IGDB has no data).
+    ttb_hastily = models.PositiveIntegerField(null=True, blank=True)
+    ttb_normally = models.PositiveIntegerField(null=True, blank=True)
+    ttb_completely = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -113,7 +113,18 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+# Database cache: shared by all gunicorn workers and kept across restarts, so cached IGDB
+# searches, the IGDB token and rate-limit counters are the same whichever worker answers.
+# Created by `manage.py createcachetable` (run in build.sh). Tests use an in-memory cache.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        "OPTIONS": {"MAX_ENTRIES": 5000},
+    }
+}
+if os.getenv("PYTEST_VERSION"):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 # --- API ---
 REST_FRAMEWORK = {

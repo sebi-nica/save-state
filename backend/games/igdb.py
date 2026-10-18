@@ -127,6 +127,32 @@ def map_game(raw):
     }
 
 
+TTB_FIELDS = ("hastily", "normally", "completely")
+
+
+def fetch_time_to_beat(igdb_ids):
+    """Return {igdb_id: {"ttb_hastily": s, "ttb_normally": s, "ttb_completely": s}} for the ids
+    IGDB has estimates for. Best effort: time-to-beat is optional, so IGDB errors yield {}."""
+    ids = [int(i) for i in igdb_ids]
+    if not ids:
+        return {}
+    body = f"fields game_id,{','.join(TTB_FIELDS)}; where game_id = {_id_list(ids)}; limit 500;"
+    try:
+        rows = query("game_time_to_beats", body)
+    except IGDBError as exc:
+        logger.info("Time-to-beat lookup failed: %s", exc)
+        return {}
+    return {row["game_id"]: {f"ttb_{f}": row.get(f) for f in TTB_FIELDS} for row in rows}
+
+
+def with_time_to_beat(games):
+    """Attach time-to-beat fields to mapped games (in place) and return them."""
+    ttb = fetch_time_to_beat(g["igdb_id"] for g in games)
+    for game in games:
+        game.update(ttb.get(game["igdb_id"], {}))
+    return games
+
+
 def search_games(text, limit=20):
     body = f"search {_quote(text)}; fields {GAME_FIELDS}; where {GAME_FILTER}; limit {int(limit)};"
     return [map_game(raw) for raw in query("games", body)]
@@ -135,7 +161,7 @@ def search_games(text, limit=20):
 def get_game(igdb_id):
     body = f"fields {GAME_FIELDS}; where id = {int(igdb_id)};"
     results = query("games", body)
-    return map_game(results[0]) if results else None
+    return with_time_to_beat([map_game(results[0])])[0] if results else None
 
 
 def discover_games(genre_ids, platform_ids, limit=40):
@@ -149,4 +175,4 @@ def discover_games(genre_ids, platform_ids, limit=40):
         f"fields {GAME_FIELDS}; where {' & '.join(conditions)}; "
         f"sort total_rating desc; limit {int(limit)};"
     )
-    return [map_game(raw) for raw in query("games", body)]
+    return with_time_to_beat([map_game(raw) for raw in query("games", body)])

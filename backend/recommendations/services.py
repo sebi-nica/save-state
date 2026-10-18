@@ -7,6 +7,7 @@
 """
 
 import logging
+import random
 from collections import Counter
 
 from django.core.cache import cache
@@ -14,7 +15,7 @@ from django.core.cache import cache
 from games import igdb
 from games.models import Game
 from games.services import upsert_games
-from library.models import RATEABLE_STATUSES, UserGameList
+from library.models import RATEABLE_STATUSES, Status, UserGameList
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +100,42 @@ def recommend(user, limit=20):
         ],
         "message": None if ranked else "No matching games found yet. Try rating more games.",
     }
+
+
+def pick_next(user, count=3, max_hours=None, rng=None):
+    """Suggest what to play next from the user's own Backlog.
+
+    Each backlog game is drawn with weight 1 + taste score, so games matching the user's favourite
+    genres/platforms come up more often while every game keeps a chance. `max_hours` keeps only
+    games whose main-story time-to-beat is known and at most that long.
+    """
+    rng = rng or random.Random()
+    backlog = list(UserGameList.objects.filter(user=user, status=Status.BACKLOG).select_related("game"))
+    result = {"backlog_size": len(backlog), "results": [], "message": None}
+    if not backlog:
+        result["message"] = "Your backlog is empty. Add some games to it first."
+        return result
+    if max_hours:
+        backlog = [e for e in backlog if e.game.ttb_normally and e.game.ttb_normally <= max_hours * 3600]
+        if not backlog:
+            result["message"] = f"No backlog games with a known length under {max_hours} hours."
+            return result
+
+    genres, platforms = taste_profile(user)
+    pool = []
+    for entry in backlog:
+        score, matched_genres, _ = score_game(entry.game, genres, platforms)
+        pool.append((1 + score, entry, matched_genres))
+
+    while pool and len(result["results"]) < count:
+        target = rng.uniform(0, sum(weight for weight, _, _ in pool))
+        index = len(pool) - 1  # float rounding fallback
+        running = 0
+        for i, (weight, _, _) in enumerate(pool):
+            running += weight
+            if target <= running:
+                index = i
+                break
+        _, entry, matched_genres = pool.pop(index)
+        result["results"].append({"entry": entry, "matched_genres": matched_genres})
+    return result

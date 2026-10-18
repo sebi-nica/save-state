@@ -120,3 +120,50 @@ def test_upsert_games_inserts_and_updates_in_order(make_game):
     existing.refresh_from_db()
     assert existing.title == "Fresh title"
     assert Game.objects.count() == 2
+
+
+TTB_URL = f"{igdb.API_URL}/game_time_to_beats"
+
+
+def test_import_stores_time_to_beat(auth_client, mock_igdb):
+    mock_igdb.post(GAMES_URL, json=[igdb_raw(7, "Celeste")])
+    mock_igdb.post(TTB_URL, json=[{"id": 1, "game_id": 7, "hastily": 36000, "normally": 72000, "completely": 180000}])
+    resp = auth_client.post("/api/games/import/", {"igdb_id": 7}, format="json")
+    assert resp.status_code == 201
+    assert (resp.data["ttb_hastily"], resp.data["ttb_normally"], resp.data["ttb_completely"]) == (36000, 72000, 180000)
+
+
+def test_time_to_beat_failure_does_not_block_import(auth_client, mock_igdb):
+    mock_igdb.post(GAMES_URL, json=[igdb_raw(7, "Celeste")])
+    mock_igdb.post(TTB_URL, status=500)
+    resp = auth_client.post("/api/games/import/", {"igdb_id": 7}, format="json")
+    assert resp.status_code == 201
+    assert resp.data["ttb_normally"] is None
+
+
+def test_search_does_not_fetch_time_to_beat(auth_client, mock_igdb):
+    mock_igdb.post(GAMES_URL, json=[igdb_raw(1, "Hades")])
+    auth_client.get("/api/games/search/?q=hades")
+    assert not any(c.request.url == TTB_URL for c in mock_igdb.calls)
+
+
+def test_discover_attaches_time_to_beat_in_one_request(mock_igdb):
+    mock_igdb.post(GAMES_URL, json=[igdb_raw(1, "A"), igdb_raw(2, "B")])
+    mock_igdb.post(TTB_URL, json=[{"id": 9, "game_id": 2, "hastily": 1, "normally": 2, "completely": 3}])
+    games = igdb.discover_games([12], [6])
+    assert games[0].get("ttb_normally") is None and games[1]["ttb_normally"] == 2
+    assert sum(1 for c in mock_igdb.calls if c.request.url == TTB_URL) == 1
+    assert "where game_id = (1,2)" in [c for c in mock_igdb.calls if c.request.url == TTB_URL][0].request.body.decode()
+
+
+def test_backfill_time_to_beat_command(make_game, mock_igdb):
+    from django.core.management import call_command
+
+    make_game(1, "Missing")
+    done = make_game(2, "Has it")
+    Game.objects.filter(pk=done.pk).update(ttb_normally=5)
+    mock_igdb.post(TTB_URL, json=[{"id": 3, "game_id": 1, "hastily": 10, "normally": 20, "completely": 30}])
+    call_command("backfill_time_to_beat")
+    assert Game.objects.get(igdb_id=1).ttb_normally == 20
+    body = [c for c in mock_igdb.calls if c.request.url == TTB_URL][0].request.body.decode()
+    assert "game_id = (1)" in body  # only games missing an estimate are queried

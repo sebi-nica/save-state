@@ -4,7 +4,7 @@ import api, { errorMessage } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import EntryEditor from '../components/EntryEditor'
 import StarRating from '../components/StarRating'
-import { Alert, Button, Chip, Cover, EmptyState, PageLoader, StatusBadge } from '../components/ui'
+import { Alert, Button, Chip, Cover, EmptyState, PageLoader, StatusBadge, formatHours } from '../components/ui'
 
 export default function GameDetail() {
   const { id } = useParams()
@@ -36,7 +36,7 @@ export default function GameDetail() {
     <div>
       <div className="grid gap-8 md:grid-cols-[240px_1fr]">
         <div className="mx-auto w-48 md:w-full">
-          <Cover src={game.cover_url} title={game.title} className="shadow-2xl shadow-violet-950/50" />
+          <Cover src={game.cover_url} title={game.title} size="hero" className="shadow-2xl shadow-violet-950/50" />
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{game.title}</h1>
@@ -78,6 +78,25 @@ export default function GameDetail() {
             )}
           </div>
 
+          {game.ttb_normally && (
+            <div className="mt-6">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Time to beat</h2>
+              <dl className="flex flex-wrap gap-2 text-sm">
+                {[
+                  ['Rushed', game.ttb_hastily],
+                  ['Main story', game.ttb_normally],
+                  ['Completionist', game.ttb_completely],
+                ]
+                  .filter(([, seconds]) => seconds)
+                  .map(([label, seconds]) => (
+                    <div key={label} className="rounded-lg bg-slate-900 px-3 py-1.5 ring-1 ring-slate-800">
+                      <dt className="text-xs text-slate-500">{label}</dt>
+                      <dd className="font-medium">{formatHours(seconds)}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          )}
           {game.genres.length > 0 && (
             <div className="mt-6">
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Genres</h2>
