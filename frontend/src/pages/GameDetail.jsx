@@ -124,7 +124,7 @@ export default function GameDetail() {
       <section className="mt-12">
         <h2 className="mb-4 text-xl font-semibold">Reviews</h2>
         {data.reviews.length === 0 ? (
-          <EmptyState title="No reviews yet">Finish this game and be the first to review it.</EmptyState>
+          <EmptyState title="No reviews yet">Play this game and be the first to review it.</EmptyState>
         ) : (
           <ul className="space-y-3">
             {data.reviews.map((r) => (

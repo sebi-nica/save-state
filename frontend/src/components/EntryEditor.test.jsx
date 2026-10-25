@@ -30,11 +30,14 @@ describe('EntryEditor', () => {
     expect(screen.queryByRole('button', { name: /Add to library|Save|Cancel/ })).toBeNull()
   })
 
-  it('only offers rating and review for Completed or Dropped', async () => {
+  it('offers rating and review for Playing, Completed or Dropped, but not Backlog', async () => {
     setup({ target: { igdb_id: 5 } })
     await userEvent.click(statusButton('Backlog'))
     expect(screen.queryByRole('radiogroup', { name: 'Rating' })).toBeNull()
-    expect(screen.getByText(/once it is Completed or Dropped/)).toBeInTheDocument()
+    expect(screen.getByText(/once you start playing it/)).toBeInTheDocument()
+
+    await userEvent.click(statusButton('Playing'))
+    expect(screen.getByRole('radiogroup', { name: 'Rating' })).toBeInTheDocument()
 
     await userEvent.click(statusButton('Dropped'))
     expect(statusButton('Dropped')).toHaveAttribute('aria-checked', 'true')
@@ -57,12 +60,22 @@ describe('EntryEditor', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('lets a game being played get a rating and review', async () => {
+    api.post.mockResolvedValue({ data: { id: 3 } })
+    setup({ target: { igdb_id: 8 } })
+    await userEvent.click(statusButton('Playing'))
+    await userEvent.click(screen.getByRole('radio', { name: '5 stars' }))
+    await userEvent.type(screen.getByRole('textbox'), 'Loving it so far')
+    await closeWindow()
+    expect(api.post).toHaveBeenCalledWith('/library/', { igdb_id: 8, status: 'Playing', rating: 5, review: 'Loving it so far' })
+  })
+
   it('also saves when closed with Escape', async () => {
     api.post.mockResolvedValue({ data: { id: 2 } })
     setup({ target: { game_id: 3 } })
     await userEvent.click(statusButton('Playing'))
     await userEvent.keyboard('{Escape}')
-    expect(api.post).toHaveBeenCalledWith('/library/', { game_id: 3, status: 'Playing' })
+    expect(api.post).toHaveBeenCalledWith('/library/', { game_id: 3, status: 'Playing', rating: null, review: null })
   })
 
   it('adds nothing when closed without choosing a status', async () => {
@@ -77,11 +90,11 @@ describe('EntryEditor', () => {
     setup({ entry: { id: 9, status: 'Completed', rating: 5, review: 'Loved it' } })
 
     expect(statusButton('Completed')).toHaveAttribute('aria-checked', 'true')
-    await userEvent.click(statusButton('Playing'))
-    expect(screen.getByText(/kept but hidden while this game is Playing/)).toBeInTheDocument()
+    await userEvent.click(statusButton('Backlog'))
+    expect(screen.getByText(/kept but hidden while this game is Backlog/)).toBeInTheDocument()
     await closeWindow()
 
-    expect(api.patch).toHaveBeenCalledWith('/library/9/', { status: 'Playing' })
+    expect(api.patch).toHaveBeenCalledWith('/library/9/', { status: 'Backlog' })
   })
 
   it('does not save an unchanged entry', async () => {

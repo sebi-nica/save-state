@@ -4,7 +4,7 @@ import api, { errorMessage } from '../api/client'
 import EntryEditor from '../components/EntryEditor'
 import StarRating from '../components/StarRating'
 import { Alert, Cover, EmptyState, PageLoader, Select, gameMeta } from '../components/ui'
-import { RATEABLE, STATUSES } from '../constants'
+import { FINISHED, RATEABLE, STATUSES } from '../constants'
 
 const TABS = ['All', ...STATUSES]
 
@@ -78,8 +78,8 @@ export default function Library() {
   const replace = (updated) => setEntries((list) => list.map((e) => (e.id === updated.id ? updated : e)))
 
   async function changeStatus(entry, status) {
-    // Moving into Completed/Dropped: open the editor so the user can rate right away.
-    if (RATEABLE.includes(status) && !RATEABLE.includes(entry.status)) {
+    // Finishing a game (moving into Completed/Dropped): open the editor so the user can rate right away.
+    if (FINISHED.includes(status) && !FINISHED.includes(entry.status)) {
       setEditing({ entry, initialStatus: status })
       return
     }

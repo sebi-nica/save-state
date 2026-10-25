@@ -1,6 +1,6 @@
 """Content-based recommendations.
 
-1. Look at the user's 4-5 star games (Completed/Dropped only) and count their genres and platforms.
+1. Look at the user's 4-5 star games (Playing/Completed/Dropped) and count their genres and platforms.
 2. Score local games the user has not tracked by overlap with the top genres/platforms.
 3. If that yields too few results, ask IGDB for well-rated games with those genres/platforms,
    cache them locally, and merge them in.
@@ -59,7 +59,7 @@ def recommend(user, limit=20):
             "based_on": {"genres": [], "platforms": []},
             "source": None,
             "results": [],
-            "message": "Rate some Completed or Dropped games 4 or 5 stars to get recommendations.",
+            "message": "Rate some of the games you're playing or have finished 4 or 5 stars to get recommendations.",
         }
 
     owned_ids = set(UserGameList.objects.filter(user=user).values_list("game_id", flat=True))

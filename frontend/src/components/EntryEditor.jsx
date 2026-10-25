@@ -51,7 +51,7 @@ export default function EntryEditor({ title, entry, target, initialStatus, onSav
   function buildPayload() {
     if (!status) return null
     const payload = { status }
-    // Ratings only travel with Completed/Dropped; otherwise the stored rating is kept but hidden.
+    // Ratings only travel with Playing/Completed/Dropped; in the Backlog the stored rating is kept but hidden.
     if (rateable) {
       payload.rating = rating
       payload.review = review.trim() || null
@@ -102,7 +102,7 @@ export default function EntryEditor({ title, entry, target, initialStatus, onSav
   let hint
   if (!status) hint = 'Pick a status to add this game. It is saved when you close this window.'
   else if (hasHiddenReview) hint = `Your rating and review are kept but hidden while this game is ${status}.`
-  else if (!rateable) hint = 'You can rate and review a game once it is Completed or Dropped.'
+  else if (!rateable) hint = 'You can rate and review a game once you start playing it.'
 
   return (
     <Modal title={entry ? `Edit: ${title}` : `Add: ${title}`} onClose={close}>

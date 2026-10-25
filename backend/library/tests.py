@@ -45,8 +45,8 @@ def test_rating_out_of_range(auth_client, make_game, rating):
     assert resp.status_code == 400
 
 
-@pytest.mark.parametrize("status", ["Completed", "Dropped"])
-def test_can_rate_completed_and_dropped(auth_client, make_game, status):
+@pytest.mark.parametrize("status", ["Playing", "Completed", "Dropped"])
+def test_can_rate_playing_completed_and_dropped(auth_client, make_game, status):
     resp = auth_client.post(
         URL, {"game_id": make_game(1).id, "status": status, "rating": 4, "review": "Fun"}, format="json"
     )
@@ -54,24 +54,33 @@ def test_can_rate_completed_and_dropped(auth_client, make_game, status):
     assert resp.data["rating"] == 4 and resp.data["review_visible"]
 
 
-@pytest.mark.parametrize("status", ["Playing", "Backlog"])
-def test_cannot_rate_other_statuses(auth_client, make_game, status):
-    resp = auth_client.post(URL, {"game_id": make_game(1).id, "status": status, "rating": 4}, format="json")
+def test_cannot_rate_backlog_games(auth_client, make_game):
+    resp = auth_client.post(URL, {"game_id": make_game(1).id, "status": "Backlog", "rating": 4}, format="json")
     assert resp.status_code == 400
-    resp = auth_client.post(URL, {"game_id": make_game(2).id, "status": status, "review": "text"}, format="json")
+    resp = auth_client.post(URL, {"game_id": make_game(2).id, "status": "Backlog", "review": "text"}, format="json")
     assert resp.status_code == 400
 
 
-def test_moving_out_of_completed_keeps_but_hides_rating(auth_client, make_game):
+def test_moving_back_to_backlog_keeps_but_hides_rating(auth_client, make_game):
     entry = auth_client.post(
         URL, {"game_id": make_game(1).id, "status": "Completed", "rating": 5, "review": "Loved it"}, format="json"
     ).data
-    resp = auth_client.patch(f"{URL}{entry['id']}/", {"status": "Playing"}, format="json")
+    resp = auth_client.patch(f"{URL}{entry['id']}/", {"status": "Backlog"}, format="json")
     assert resp.status_code == 200
     assert resp.data["rating"] == 5
     assert resp.data["review_visible"] is False
-    # But a new rating can't be set while Playing.
+    # But a new rating can't be set while in the Backlog.
     assert auth_client.patch(f"{URL}{entry['id']}/", {"rating": 3}, format="json").status_code == 400
+
+
+def test_review_while_playing_then_finish(auth_client, make_game):
+    entry = auth_client.post(
+        URL, {"game_id": make_game(1).id, "status": "Playing", "rating": 4, "review": "Great so far"}, format="json"
+    ).data
+    assert entry["review_visible"] is True
+    resp = auth_client.patch(f"{URL}{entry['id']}/", {"status": "Completed", "rating": 5}, format="json")
+    assert resp.status_code == 200
+    assert (resp.data["rating"], resp.data["review"]) == (5, "Great so far")
 
 
 def test_blank_review_is_stored_as_null(auth_client, make_game):

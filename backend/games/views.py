@@ -80,7 +80,7 @@ class GameImportView(APIView):
 
 
 def public_reviews(game):
-    """Ratings/reviews visible to everyone: only entries currently Completed or Dropped."""
+    """Ratings/reviews visible to everyone: only entries currently Playing, Completed or Dropped."""
     return (
         UserGameList.objects.filter(game=game, status__in=RATEABLE_STATUSES, user__is_active=True)
         .filter(Q(rating__isnull=False) | (Q(review__isnull=False) & ~Q(review="")))

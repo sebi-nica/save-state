@@ -62,7 +62,7 @@ class UserGameListSerializer(serializers.ModelSerializer):
         sets_review = attrs.get("review") is not None
         if (sets_rating or sets_review) and status not in RATEABLE_STATUSES:
             raise serializers.ValidationError(
-                {"rating": "Only Completed or Dropped games can be rated or reviewed."}
+                {"rating": "Only Playing, Completed or Dropped games can be rated or reviewed."}
             )
         return attrs
 

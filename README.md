@@ -17,7 +17,7 @@ frontend/   React SPA
 ## Changes from the original specification
 
 - **IGDB instead of RAWG.** RAWG proved unreliable. `Game.rawg_id` is now `igdb_id`. Search goes through the backend, so the API secret never reaches the browser.
-- **Ratings and reviews** are allowed for Completed *and* Dropped games. If an entry moves back to Playing or Backlog, its rating and review are kept but hidden from the game page and ignored by the recommender.
+- **Ratings and reviews** are allowed for Playing, Completed and Dropped games, so players can review a game they haven't finished yet. If an entry moves back to the Backlog, its rating and review are kept but hidden from the game page and ignored by the recommender.
 - **Recommendations** first score local games against the user's taste. If there are too few, they fall back to an IGDB query using the user's top genres and platforms. Games already in the user's library, Backlog included, are never suggested.
 - **Reviews are public** on each game's page.
 - **Refresh-token cookie.** Vercel rewrites `/api/*` to Render, so the browser only talks to one origin. The HTTP-only refresh cookie is therefore first-party (`SameSite=Lax`), which Safari and other privacy-focused browsers don't block.
@@ -114,7 +114,7 @@ The cache is Django's database cache (the `django_cache` table, created by `crea
 
 ### Recommendation algorithm
 
-1. Take the user's 4★ and 5★ entries that are Completed or Dropped. Count genres and platforms, and keep the top 3 genres and the top 2 platforms.
+1. Take the user's 4★ and 5★ entries that are Playing, Completed or Dropped. Count genres and platforms, and keep the top 3 genres and the top 2 platforms.
 2. Score every local game not in the user's library: `2 × genre matches + 1 × platform matches`. Games need at least one genre match.
 3. If fewer than 20 games qualify, query IGDB for well-rated games with those genres and platforms (cached for an hour). Store the results locally and merge them in.
 

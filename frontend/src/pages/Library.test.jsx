@@ -57,6 +57,22 @@ describe('Library', () => {
     expect(await screen.findByRole('tab', { name: 'Backlog 1' })).toBeInTheDocument()
   })
 
+  it('starting a game from the Backlog does not open the editor', async () => {
+    api.get.mockResolvedValue({ data: [{ ...ENTRIES[0], id: 7, status: 'Backlog' }] })
+    render(
+      <MemoryRouter>
+        <Library />
+      </MemoryRouter>,
+    )
+    await screen.findByRole('heading', { name: 'Celeste' })
+    api.patch.mockResolvedValue({ data: { ...ENTRIES[0], id: 7, status: 'Playing' } })
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Status of Celeste' }), 'Playing')
+
+    expect(api.patch).toHaveBeenCalledWith('/library/7/', { status: 'Playing' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('opens the editor to rate when a game moves to Completed', async () => {
     await renderLibrary()
 

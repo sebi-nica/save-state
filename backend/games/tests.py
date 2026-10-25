@@ -87,8 +87,8 @@ def test_import_unknown_game(auth_client, mock_igdb):
 def test_detail_shows_only_public_reviews(client, user, other_user, make_game):
     game = make_game(1, "Hades")
     UserGameList.objects.create(user=user, game=game, status="Completed", rating=5, review="Great")
-    # Rated earlier, then moved back to Playing: hidden.
-    UserGameList.objects.create(user=other_user, game=game, status="Playing", rating=1, review="Meh")
+    # Rated earlier, then moved back to the Backlog: hidden.
+    UserGameList.objects.create(user=other_user, game=game, status="Backlog", rating=1, review="Meh")
 
     resp = client.get(f"/api/games/{game.id}/")
     assert resp.status_code == 200
@@ -97,6 +97,13 @@ def test_detail_shows_only_public_reviews(client, user, other_user, make_game):
     assert resp.data["rating_count"] == 1
     assert resp.data["my_entry"] is None
 
+
+
+def test_detail_includes_reviews_from_players_still_playing(client, user, make_game):
+    game = make_game(1, "Hades")
+    UserGameList.objects.create(user=user, game=game, status="Playing", rating=4, review="Great so far")
+    resp = client.get(f"/api/games/{game.id}/")
+    assert [(r["username"], r["status"]) for r in resp.data["reviews"]] == [("alice", "Playing")]
 
 def test_igdb_not_configured(settings):
     settings.IGDB_CLIENT_ID = ""

@@ -1,7 +1,10 @@
 export const STATUSES = ['Playing', 'Backlog', 'Completed', 'Dropped']
 
 // Only these statuses can carry a rating/review (enforced by the backend too).
-export const RATEABLE = ['Completed', 'Dropped']
+export const RATEABLE = ['Playing', 'Completed', 'Dropped']
+
+// Moving a game into one of these means the user finished with it: a good moment to rate it.
+export const FINISHED = ['Completed', 'Dropped']
 
 export const STATUS_STYLES = {
   Playing: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30',

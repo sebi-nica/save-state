@@ -28,13 +28,21 @@ def rpg_fan(user, make_game):
 
 
 def test_taste_profile_uses_only_4_and_5_star_rateable_entries(rpg_fan, make_game):
-    # A 5-star rating left on a game moved back to Playing is ignored.
+    # A 5-star rating left on a game moved back to the Backlog is ignored.
     UserGameList.objects.create(
-        user=rpg_fan, game=make_game(5, "Hidden", genres=[SHOOTER], platforms=[PS5]), status="Playing", rating=5
+        user=rpg_fan, game=make_game(5, "Hidden", genres=[SHOOTER], platforms=[PS5]), status="Backlog", rating=5
     )
     genres, platforms = taste_profile(rpg_fan)
     assert list(genres) == [12, 9]
     assert list(platforms) == [6]
+
+
+def test_taste_profile_counts_highly_rated_games_still_being_played(user, make_game):
+    UserGameList.objects.create(
+        user=user, game=make_game(1, "In progress", genres=[PUZZLE], platforms=[PC]), status="Playing", rating=5
+    )
+    genres, platforms = taste_profile(user)
+    assert list(genres) == [9] and list(platforms) == [6]
 
 
 def test_no_liked_games_gives_message(user):

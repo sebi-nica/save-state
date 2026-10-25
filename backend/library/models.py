@@ -11,9 +11,9 @@ class Status(models.TextChoices):
     DROPPED = "Dropped"
 
 
-# Only these statuses may carry a rating/review. Entries moved to another status keep their
+# Only these statuses may carry a rating/review. Entries moved back to Backlog keep their
 # rating/review, but it is hidden from public views and ignored by the recommender.
-RATEABLE_STATUSES = (Status.COMPLETED, Status.DROPPED)
+RATEABLE_STATUSES = (Status.PLAYING, Status.COMPLETED, Status.DROPPED)
 
 
 class UserGameList(models.Model):
