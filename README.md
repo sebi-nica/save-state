@@ -1,159 +1,64 @@
 # SaveState
 
-A video game tracker for beating "backlog fatigue". Users track games as **Playing**, **Backlog**, **Completed** or **Dropped**. They can rate and review what they finish and get content-based recommendations. Admins moderate users, games and reviews.
+A video game tracker that helps players beat "backlog fatigue": keep track of every game, rate and review what you play, and get suggestions for what to play next.
 
-| Layer | Tech | Hosting |
-|---|---|---|
-| Frontend | React 19, Vite, Tailwind CSS 4, React Router, Axios | Vercel |
-| Backend | Python 3.13, Django 5.2, Django REST Framework, SimpleJWT | Render |
-| Database | PostgreSQL | Neon (AWS eu-central-1) |
-| Game data | [IGDB API](https://api-docs.igdb.com/) (Twitch) | — |
+**Live:** [save-state-rust.vercel.app](https://save-state-rust.vercel.app)
 
-```
-backend/    Django project (savestate) + apps: accounts, games, library, recommendations, moderation
-frontend/   React SPA
-```
+## Features
 
-## Changes from the original specification
+### Accounts
+- Sign up, log in and stay logged in across visits.
+- Edit your profile: change your username, email or password, or delete your account.
 
-- **IGDB instead of RAWG.** RAWG proved unreliable. `Game.rawg_id` is now `igdb_id`. Search goes through the backend, so the API secret never reaches the browser.
-- **Ratings and reviews** are allowed for Playing, Completed and Dropped games, so players can review a game they haven't finished yet. If an entry moves back to the Backlog, its rating and review are kept but hidden from the game page and ignored by the recommender.
-- **Recommendations** first score local games against the user's taste. If there are too few, they fall back to an IGDB query using the user's top genres and platforms. Games already in the user's library, Backlog included, are never suggested.
-- **Reviews are public** on each game's page.
-- **Refresh-token cookie.** Vercel rewrites `/api/*` to Render, so the browser only talks to one origin. The HTTP-only refresh cookie is therefore first-party (`SameSite=Lax`), which Safari and other privacy-focused browsers don't block.
-- **Profile editing** (username, email, password, account deletion) is included. Password reset is out of scope for now.
+### Game search
+- Search a live database of games with covers, release years, genres and platforms.
+- Results leave out DLC, bundles, mods and special editions.
+- Each result shows whether the game is already in your library.
 
-## Local development
+### Library
+- Track every game as **Playing**, **Backlog**, **Completed** or **Dropped**.
+- Filter by status with tabs that show how many games each status holds.
+- Sort by recently updated, title, shortest time to beat or highest rating.
+- Add or edit a game in one dialog: pick a status from four buttons, and the change saves when you close it.
+- Moving a game to Completed or Dropped opens the dialog so you can rate it right away.
 
-Prerequisites: Python 3.12+ (`py -3.13` on Windows) and Node 20+.
+### Ratings and reviews
+- Rate games from 1 to 5 stars and write a review while you're playing, after you finish, or after you drop a game.
+- Reviews are public on each game's page, together with the game's average rating.
+- If a game goes back to your Backlog, its rating and review are kept but hidden.
 
-### Backend
+### Game pages
+- Cover, release date, summary, genres and platforms.
+- Time-to-beat estimates for a rushed playthrough, the main story and a completionist run.
+- All public reviews and ratings, plus quick access to your own entry.
 
-```bash
-cd backend
-py -3.13 -m venv .venv
-.venv/Scripts/pip install -r requirements-dev.txt     # macOS/Linux: .venv/bin/pip
-cp .env.example .env                                   # then fill in the values
-.venv/Scripts/python manage.py migrate
-.venv/Scripts/python manage.py createcachetable
-.venv/Scripts/python manage.py createsuperuser
-.venv/Scripts/python manage.py runserver 8000
-```
+### Recommendations
+- Personalised suggestions based on the genres and platforms of the games you rate 4 or 5 stars.
+- Each suggestion shows which of your favourite genres it matches.
+- Games already in your library are never suggested.
+- Add any suggestion to your Backlog with one click.
 
-`backend/.env` values:
+### "What should I play next?"
+- Picks three games from your own Backlog, favouring the ones that fit your taste.
+- Shuffle for a new set, or limit picks to games under 10, 25 or 50 hours.
+- "Start playing" moves a pick straight to Playing.
 
-| Variable | Notes |
+### Administration (admins only)
+- **Users:** search, deactivate, promote to admin, or delete accounts.
+- **Games:** browse every stored game, refresh its data, or delete it.
+- **Reviews:** moderate ratings and reviews and remove inappropriate ones.
+
+## Tech
+
+| Part | Technology |
 |---|---|
-| `DEBUG` | `True` locally |
-| `SECRET_KEY` | `python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"` |
-| `DATABASE_URL` | Neon **dev** branch, pooled connection string. Leave empty to use local SQLite. |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | From your app at [dev.twitch.tv/console](https://dev.twitch.tv/console) |
-| `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` | Defaults work for local development |
+| Frontend | React 19, Vite 8, Tailwind CSS 4, React Router 7, Axios. Hosted on **Vercel** |
+| Backend | Python 3.13, Django 5.2, Django REST Framework, SimpleJWT (JWT login). Hosted on **Render** |
+| Database | PostgreSQL on **Neon** |
+| Game data | [IGDB API](https://api-docs.igdb.com/) (Twitch) |
+| Testing | pytest (backend) and Vitest with React Testing Library (frontend) |
 
-Without IGDB credentials, you can load a few demo games with `manage.py seed_demo` to try the UI.
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev        # http://localhost:5173; /api is proxied to localhost:8000
-```
-
-### Tests
-
-```bash
-cd backend
-.venv/Scripts/python -m pytest
-```
-
-Tests run on in-memory SQLite and mock every IGDB call, so they need no network access or credentials. To run them against Postgres instead, set `TEST_DATABASE_URL`.
-
-### Frontend tests
-
-```bash
-cd frontend
-npm test            # single run; `npm run test:watch` re-runs on save
-```
-
-Vitest and React Testing Library run in jsdom with a fake HTTP layer. They cover:
-- The API client: token refresh on 401, sharing one refresh between concurrent calls, the cross-tab Web Lock, and cold-start retries with the "waking up" signal.
-- Rating rules in the library editor.
-- The star rating control.
-- Library tabs and status changes.
-- The route guards.
-
-## API overview
-
-All endpoints are under `/api/`. Authenticated endpoints expect `Authorization: Bearer <access token>`.
-
-| Method & path | Description |
-|---|---|
-| `POST auth/register/`, `POST auth/login/` | Return `{access, user}` and set the `refresh_token` cookie |
-| `POST auth/refresh/` | Issue a new access token and rotate the refresh cookie |
-| `POST auth/logout/` | Blacklist the refresh token and clear the cookie |
-| `GET/PATCH/DELETE auth/me/`, `POST auth/me/password/` | Profile management; DELETE requires `{password}` |
-| `GET games/search/?q=` | Live IGDB search, annotated with the user's library status |
-| `POST games/import/ {igdb_id}` | Store a selected IGDB game locally |
-| `GET games/{id}/` | Game details, public reviews, average rating, and the caller's own entry (public endpoint) |
-| `GET/POST library/`, `PATCH/DELETE library/{id}/` | The user's tracked games; `?status=` filters. POST accepts `game_id` or `igdb_id`. |
-| `GET recommendations/` | Personalized suggestions, plus the genres and platforms they're based on |
-| `GET recommendations/next/?max_hours=&count=` | "What should I play next?": weighted random picks from the user's Backlog |
-| `admin/users/`, `admin/games/`, `admin/reviews/` | Staff only: list (`?search=`, `?page=`), update, delete; `POST admin/games/{id}/resync/` |
-
-The Django admin panel is also available as a fallback at `/django-admin/` on the backend.
-
-### Time to beat
-Each game stores IGDB's community time-to-beat estimates (rushed, main story, completionist), fetched when the game is imported or discovered. `manage.py backfill_time_to_beat` fills in missing estimates and runs on every deploy. The Library can sort by shortest main-story time.
-
-### Backlog picker
-`recommendations/next/` draws up to `count` distinct games from the user's Backlog. Each game's weight is `1 + taste score`, where the taste score is the same genre/platform score the recommender uses. Games the user is likely to enjoy come up more often, but every backlog game keeps a chance. `max_hours` keeps only games whose main-story estimate is known and fits.
-
-### Caching
-The cache is Django's database cache (the `django_cache` table, created by `createcachetable`), so all gunicorn workers share cached IGDB searches, the IGDB token and rate-limit counters. Vercel serves the hashed `/assets/*` files with a one-year immutable `Cache-Control` header.
-
-### Recommendation algorithm
-
-1. Take the user's 4★ and 5★ entries that are Playing, Completed or Dropped. Count genres and platforms, and keep the top 3 genres and the top 2 platforms.
-2. Score every local game not in the user's library: `2 × genre matches + 1 × platform matches`. Games need at least one genre match.
-3. If fewer than 20 games qualify, query IGDB for well-rated games with those genres and platforms (cached for an hour). Store the results locally and merge them in.
-
-## Deployment
-
-### 1. Neon
-Create a project in **AWS Europe Central 1 (Frankfurt)**. Use the `production` branch for Render and the `dev` branch for local work, and copy the **pooled** connection strings.
-
-### 2. Render (backend)
-New **Web Service** from the GitHub repo:
-- Root directory: `backend`
-- Runtime: Python
-- Build command: `bash build.sh`. It installs packages, runs `collectstatic`, `migrate` and `createcachetable`, creates the admin account through `ensure_superuser`, and backfills missing time-to-beat estimates.
-- Start command: `gunicorn savestate.wsgi`
-- Health check path: `/api/health/`
-- Environment variables:
-
-| Variable | Value |
-|---|---|
-| `PYTHON_VERSION` | `3.13.0` or newer |
-| `DEBUG` | `False` |
-| `SECRET_KEY` | A newly generated key, different from your local one |
-| `DATABASE_URL` | Neon `production` pooled connection string |
-| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch app credentials |
-| `ALLOWED_HOSTS` | `<service>.onrender.com` |
-| `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` | `https://<project>.vercel.app` |
-| `DJANGO_SUPERUSER_USERNAME` / `_EMAIL` / `_PASSWORD` | The first admin account |
-
-Render's free tier sleeps after about 15 minutes of inactivity, so the first request after that can take up to a minute.
-
-### 3. Vercel (frontend)
-1. `frontend/vercel.json` rewrites `/api/*` to `https://save-state-api.onrender.com`. Update it if the Render service is renamed.
-2. Import the repo in Vercel with root directory `frontend` and framework preset **Vite**. No environment variables are needed.
-3. After the first deploy, put the Vercel URL into Render's `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`.
-
-Pushes to `main` redeploy both services automatically.
-
-### 4. Keep-alive (cron-job.org)
-Render's free tier puts the backend to sleep after 15 minutes without traffic, and the next request then waits 30–60 seconds for it to start. A free [cron-job.org](https://cron-job.org) job sends `GET https://save-state-api.onrender.com/api/health/` every 10 minutes so the backend stays awake. The health endpoint doesn't query the database, so Neon can still pause when idle. Running one service around the clock uses at most 744 of Render's 750 free hours a month.
+Vercel serves the website and forwards every `/api/` request to the Django backend on Render, which stores data in Neon and fetches game information from IGDB. Every push to `main` redeploys both services automatically, and a [cron-job.org](https://cron-job.org) job pings the backend every 10 minutes so Render's free tier never puts it to sleep.
 
 ---
 Game data provided by [IGDB.com](https://www.igdb.com).
